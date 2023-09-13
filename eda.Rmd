@@ -1,0 +1,147 @@
+---
+title: "Rate This Interruption"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r, echo = FALSE, message = FALSE}
+#Load Materials
+library(googlesheets4)
+library(tidyverse)
+library(ThemePark)
+library(scales)
+
+couples <- read.csv("/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/data.csv")
+couples <- couples |> filter(Exclude == "FALSE")
+```
+
+```{r}
+couples |>
+  ggplot(aes(x = Mentions)) +
+  geom_bar(fill = "purple") +
+  theme_barbie() +
+  labs(title = "Who are we talking about?",
+       x = "Number of Mentions",
+       y = "Number of Couples")
+```
+Who are our power couples? These guys are in the tail of the distribution.
+```{r}
+couples |> filter(Mentions > 10) |> select(Show, Couple, Mentions)
+```
+
+```{r}
+couples |>
+  group_by(Show) |>
+  summarize(year = mean(Year.of.Start)) |>
+  ggplot(aes(x = year)) +
+  geom_bar(fill = "purple") +
+  theme_barbie() +
+  labs(title = "When are we debuting?",
+       x = "Year of Start",
+       y = "Number of Shows")
+```
+
+Who are our top 3 oldies and top three new shows?
+```{r}
+rbind(couples |> 
+        group_by(Show) |>
+        summarize(year = first(Year.of.Start)) |>
+        arrange(year) |> 
+        head(3),
+      couples |> 
+        group_by(Show) |>
+        summarize(year = first(Year.of.Start)) |>
+        arrange(year) |>
+        tail(3))
+
+```
+
+```{r}
+couples |>
+  group_by(Show) |>
+  summarize(year = as.character(first(Year.of.Start))) |>
+  mutate(decade = case_when(
+    grepl("197", year) ~ "1970s",
+    grepl("198", year) ~ "1980s",
+    grepl("199", year) ~ "1990s",
+    grepl("200", year) ~ "2000s",
+    grepl("201", year) ~ "2010s",
+    grepl("202", year) ~ "2020s"
+  )) |>
+  ggplot(aes(x = decade)) +
+  geom_bar(fill = "purple") +
+  theme_barbie() +
+  labs(title = "What decades do we have?",
+       x = "",
+       y = "Number of Shows")
+```
+
+```{r}
+couples |>
+  group_by(Show) |>
+  summarize(pairs = n()) |>
+  ggplot(aes(x = pairs)) +
+  geom_bar(fill = "purple") +
+  theme_barbie() +
+  labs(title = "How many couples do we have per show?",
+       x = "Number of Couples",
+       y = "Number of Shows")
+```
+
+Who are our super romantic shows?
+```{r}
+couples |>
+  group_by(Show) |>
+  summarize(pairs = n()) |>
+  filter(pairs > 2)
+```
+
+```{r}
+couples |>
+  #compute percentage of show to go as difference in seasons over total
+  mutate(perc_seasons_to_go = (Num_Seasons - FirstKiss_Season)/Num_Seasons) |>
+  ggplot(aes(x = perc_seasons_to_go)) +
+  #bin at 10%
+  geom_histogram(binwidth = 0.10, fill = "purple") +
+  scale_x_continuous(labels = scales::percent) +
+  coord_flip() +
+  labs(x = "Percentage of Show to Go", y = "Number of Couples",
+       title = "How early are these kisses happening?",
+       subtitle = "Early. Much earlier than I thought.") +
+  theme_barbie()
+```
+
+Who's a last season kisser?
+```{r}
+couples |>
+  filter(Num_Seasons == FirstKiss_Season)
+```
+
+```{r}
+couples |>
+  #compute percentage of show to go as difference in seasons over total
+  mutate(perc_seasons_to_go = (Num_Seasons - FirstKiss_Season)/Num_Seasons) |>
+  mutate(decade = case_when(
+    grepl("197", Year.of.Start) ~ "1970s",
+    grepl("198", Year.of.Start) ~ "1980s",
+    grepl("199", Year.of.Start) ~ "1990s",
+    grepl("200", Year.of.Start) ~ "2000s",
+    grepl("201", Year.of.Start) ~ "2010s",
+    grepl("202", Year.of.Start) ~ "2020s"
+  )) |>
+  ggplot(aes(x = perc_seasons_to_go, group = decade)) +
+  #bin at 10%
+  geom_histogram(binwidth = 0.10, fill = "purple") +
+  scale_x_continuous(labels = scales::percent) +
+  coord_flip() +
+  facet_wrap(vars(decade)) +
+  labs(x = "Percentage of Show to Go", y = "Number of Couples",
+       title = "How early are these kisses happening?",
+       subtitle = "(and does it vary by decade)",
+       caption = "(still much earlier than I thought)") +
+  theme_barbie()
+
+  
+```
