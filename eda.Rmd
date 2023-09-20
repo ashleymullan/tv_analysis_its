@@ -15,9 +15,13 @@ library(ThemePark)
 library(scales)
 library(janitor)
 
-couples <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", sheet = "Unique_Couples")
+couples <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", 
+                      sheet = "Unique_Couples")
 couples <- clean_names(couples)
-couples <- couples |> filter(!exclude) |> mutate(show = unlist(show))
+couples <- couples |> 
+  filter(!exclude) |> 
+  mutate(show = unlist(show)) |> 
+  select(-starts_with(c("make_it_official", "exclude")), -already_together, -imdb_id)
 ```
 
 ```{r}
@@ -29,9 +33,13 @@ couples |>
        x = "Number of Mentions",
        y = "Number of Couples")
 ```
+
 Who are our power couples? These guys are in the tail of the distribution.
+
 ```{r}
-couples |> filter(mentions > 10) |> select(show, couple, mentions)
+couples |> 
+  filter(mentions > 10) |> 
+  select(show, couple, mentions)
 ```
 
 ```{r}
@@ -47,6 +55,7 @@ couples |>
 ```
 
 Who are our top 3 oldies and top three new shows?
+
 ```{r}
 rbind(couples |> 
         group_by(show) |>
@@ -149,11 +158,33 @@ couples |>
 
 Now, to read in the ratings data.
 ```{r}
-ratings <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", sheet = "Episode_Ratings")
+ratings <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", 
+                      sheet = "Episode_Ratings")
 ratings <- clean_names(ratings)
+
+# Exclude ratings rows with missing data
+ratings <- ratings[complete.cases(ratings), ]
 ```
 
 Now, to join the two.
+
+```{r, warning = FALSE}
+# Left-join episodes and ratings into the couples
+ratings_couples <- couples[1:20, ] |> 
+  left_join(ratings, 
+            by = join_by(show == show),
+            relationship = "many-to-many")
+
+# Create an indicator variable for episodes that aired after first kiss
+ratings_couples <- ratings_couples |> 
+  group_by(show, couple) |> 
+  mutate(show_couple_id = 1:n(), 
+         is_first_kiss_ep = season == first_kiss_season & episode == first_kiss_episode,
+         first_kiss_id = min(ifelse(test = is_first_kiss_ep, yes = show_couple_id, no = 9999)),
+         after_first_kiss = show_couple_id > first_kiss_id) |> 
+  select(-is_first_kiss_ep, -first_kiss_id)
+```
+
 ```{r}
 #convention: turn true if at or past kiss episode
 past_kiss <- function(curr_ep, curr_szn, kiss_ep, kiss_szn){
