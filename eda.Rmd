@@ -5,6 +5,7 @@ output:
     df_print: paged
 ---
 
+PROBLEM: SHOW NOT LOADING CORRECTLY
 
 ```{r, echo = FALSE, message = FALSE}
 #Load Materials
@@ -12,14 +13,16 @@ library(googlesheets4)
 library(tidyverse)
 library(ThemePark)
 library(scales)
+library(janitor)
 
-couples <- read.csv("/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/data.csv")
-couples <- couples |> filter(Exclude == "FALSE")
+couples <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", sheet = "Unique_Couples")
+couples <- clean_names(couples)
+couples <- couples |> filter(!exclude)
 ```
 
 ```{r}
 couples |>
-  ggplot(aes(x = Mentions)) +
+  ggplot(aes(x = mentions)) +
   geom_bar(fill = "purple") +
   theme_barbie() +
   labs(title = "Who are we talking about?",
@@ -28,13 +31,13 @@ couples |>
 ```
 Who are our power couples? These guys are in the tail of the distribution.
 ```{r}
-couples |> filter(Mentions > 10) |> select(Show, Couple, Mentions)
+couples |> filter(mentions > 10) |> select(show, couple, mentions)
 ```
 
 ```{r}
 couples |>
-  group_by(Show) |>
-  summarize(year = mean(Year.of.Start)) |>
+  group_by(show) |>
+  summarize(year = mean(year_of_start)) |>
   ggplot(aes(x = year)) +
   geom_bar(fill = "purple") +
   theme_barbie() +
@@ -46,13 +49,13 @@ couples |>
 Who are our top 3 oldies and top three new shows?
 ```{r}
 rbind(couples |> 
-        group_by(Show) |>
-        summarize(year = first(Year.of.Start)) |>
+        group_by(show) |>
+        summarize(year = first(year_of_start)) |>
         arrange(year) |> 
         head(3),
       couples |> 
-        group_by(Show) |>
-        summarize(year = first(Year.of.Start)) |>
+        group_by(show) |>
+        summarize(year = first(year_of_start)) |>
         arrange(year) |>
         tail(3))
 
@@ -60,8 +63,8 @@ rbind(couples |>
 
 ```{r}
 couples |>
-  group_by(Show) |>
-  summarize(year = as.character(first(Year.of.Start))) |>
+  group_by(show) |>
+  summarize(year = as.character(first(year_of_start))) |>
   mutate(decade = case_when(
     grepl("197", year) ~ "1970s",
     grepl("198", year) ~ "1980s",
@@ -80,7 +83,7 @@ couples |>
 
 ```{r}
 couples |>
-  group_by(Show) |>
+  group_by(show) |>
   summarize(pairs = n()) |>
   ggplot(aes(x = pairs)) +
   geom_bar(fill = "purple") +
@@ -93,7 +96,7 @@ couples |>
 Who are our super romantic shows?
 ```{r}
 couples |>
-  group_by(Show) |>
+  group_by(show) |>
   summarize(pairs = n()) |>
   filter(pairs > 2)
 ```
@@ -101,7 +104,7 @@ couples |>
 ```{r}
 couples |>
   #compute percentage of show to go as difference in seasons over total
-  mutate(perc_seasons_to_go = (Num_Seasons - FirstKiss_Season)/Num_Seasons) |>
+  mutate(perc_seasons_to_go = (num_seasons - first_kiss_season)/num_seasons) |>
   ggplot(aes(x = perc_seasons_to_go)) +
   #bin at 10%
   geom_histogram(binwidth = 0.10, fill = "purple") +
@@ -116,20 +119,20 @@ couples |>
 Who's a last season kisser?
 ```{r}
 couples |>
-  filter(Num_Seasons == FirstKiss_Season)
+  filter(num_seasons == first_kiss_season)
 ```
 
 ```{r}
 couples |>
   #compute percentage of show to go as difference in seasons over total
-  mutate(perc_seasons_to_go = (Num_Seasons - FirstKiss_Season)/Num_Seasons) |>
+  mutate(perc_seasons_to_go = (num_seasons - first_kiss_season)/num_seasons) |>
   mutate(decade = case_when(
-    grepl("197", Year.of.Start) ~ "1970s",
-    grepl("198", Year.of.Start) ~ "1980s",
-    grepl("199", Year.of.Start) ~ "1990s",
-    grepl("200", Year.of.Start) ~ "2000s",
-    grepl("201", Year.of.Start) ~ "2010s",
-    grepl("202", Year.of.Start) ~ "2020s"
+    grepl("197", year_of_start) ~ "1970s",
+    grepl("198", year_of_start) ~ "1980s",
+    grepl("199", year_of_start) ~ "1990s",
+    grepl("200", year_of_start) ~ "2000s",
+    grepl("201", year_of_start) ~ "2010s",
+    grepl("202", year_of_start) ~ "2020s"
   )) |>
   ggplot(aes(x = perc_seasons_to_go, group = decade)) +
   #bin at 10%
