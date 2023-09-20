@@ -155,5 +155,17 @@ ratings <- clean_names(ratings)
 
 Now, to join the two.
 ```{r}
+#convention: turn true if at or past kiss episode
+past_kiss <- function(curr_ep, curr_szn, kiss_ep, kiss_szn){
+  pass <- FALSE
+  if(curr_szn >= kiss_szn) {
+    if(curr_ep >= kiss_ep) { pass <- TRUE}
+  }
+  pass
+}
+
 full <- left_join(ratings, couples, by = "show") #ISSUE
+full <- full |>
+  mutate(past <- past_kiss(episode, season, first_kiss_episode, first_kiss_season))
+         
 ```
