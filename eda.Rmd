@@ -145,6 +145,15 @@ couples |>
        subtitle = "(and does it vary by decade)",
        caption = "(still much earlier than I thought)") +
   theme_barbie()
+```
 
-  
+Now, to read in the ratings data.
+```{r}
+ratings <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", sheet = "Episode_Ratings")
+ratings <- clean_names(ratings)
+```
+
+Now, to join the two.
+```{r}
+full <- left_join(ratings, couples, by = "show") #ISSUE
 ```
