@@ -17,7 +17,7 @@ library(janitor)
 
 couples <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", sheet = "Unique_Couples")
 couples <- clean_names(couples)
-couples <- couples |> filter(!exclude)
+couples <- couples |> filter(!exclude) |> mutate(show = unlist(show))
 ```
 
 ```{r}
