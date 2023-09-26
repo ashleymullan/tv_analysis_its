@@ -5,7 +5,6 @@ output:
     df_print: paged
 ---
 
-PROBLEM: SHOW NOT LOADING CORRECTLY
 
 ```{r, echo = FALSE, message = FALSE}
 #Load Materials
@@ -21,7 +20,7 @@ couples <- clean_names(couples)
 couples <- couples |> 
   filter(!exclude) |> 
   mutate(show = unlist(show)) |> 
-  select(-starts_with(c("make_it_official", "exclude")), -already_together, -imdb_id)
+  dplyr::select(-starts_with(c("make_it_official", "exclude")), -already_together, -imdb_id)
 ```
 
 ```{r}
@@ -39,7 +38,7 @@ Who are our power couples? These guys are in the tail of the distribution.
 ```{r}
 couples |> 
   filter(mentions > 10) |> 
-  select(show, couple, mentions)
+  dplyr::select(show, couple, mentions)
 ```
 
 ```{r}
@@ -172,8 +171,8 @@ Now, to join the two.
 # Left-join episodes and ratings into the couples
 ratings_couples <- couples[1:20, ] |> 
   left_join(ratings, 
-            by = join_by(show == show),
-            relationship = "many-to-many")
+            by = join_by(show == show))
+            
 
 # Create an indicator variable for episodes that aired after first kiss
 ratings_couples <- ratings_couples |> 
@@ -182,21 +181,37 @@ ratings_couples <- ratings_couples |>
          is_first_kiss_ep = season == first_kiss_season & episode == first_kiss_episode,
          first_kiss_id = min(ifelse(test = is_first_kiss_ep, yes = show_couple_id, no = 9999)),
          after_first_kiss = show_couple_id > first_kiss_id) |> 
-  select(-is_first_kiss_ep, -first_kiss_id)
+  dplyr::select(-is_first_kiss_ep) |>
+  mutate(eps_since_kiss = show_couple_id - first_kiss_id) |>
+  ungroup()
 ```
 
 ```{r}
-#convention: turn true if at or past kiss episode
-past_kiss <- function(curr_ep, curr_szn, kiss_ep, kiss_szn){
-  pass <- FALSE
-  if(curr_szn >= kiss_szn) {
-    if(curr_ep >= kiss_ep) { pass <- TRUE}
-  }
-  pass
-}
+#center on first kiss before fitting the model
+its_mod <- lm(data = ratings_couples,
+              rating ~ eps_since_kiss + after_first_kiss + eps_since_kiss * after_first_kiss)
+ratings_couples |>
+  dplyr::mutate(fit = its_mod$fitted.values) |>
+  ggplot(aes( x = eps_since_kiss, y = rating, group = after_first_kiss)) +
+  geom_point(aes(color = after_first_kiss), alpha = 0.5) +
+  geom_line(aes(y = fit))
+```
 
-full <- left_join(ratings, couples, by = "show") #ISSUE
-full <- full |>
-  mutate(past <- past_kiss(episode, season, first_kiss_episode, first_kiss_season))
-         
+```{r}
+ratings_couples |> 
+  dplyr::mutate(fit = its_mod$fitted.values) |>
+  filter(show == "New Girl") |>
+  ggplot(aes(x = eps_since_kiss, y = rating, group = after_first_kiss)) +
+  geom_point(aes(color = after_first_kiss), alpha = 0.5) +
+  geom_line(aes(y = fit)) +
+  theme_barbie() +
+  labs(title = "I meant something like that",
+       subtitle = "jess and nick <3") +
+  theme(plot.title = element_text(size = 10),
+        plot.subtitle = element_text(size = 8),
+        axis.title = element_text(size = 8),
+        axis.text = element_text(size = 8),
+        legend.title = element_text(size = 8)) +
+  scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkgray"))
+  
 ```
