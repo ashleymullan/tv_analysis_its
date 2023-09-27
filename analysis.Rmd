@@ -191,19 +191,49 @@ ratings_couples <- ratings_couples |>
 its_mod <- lm(data = ratings_couples,
               rating ~ eps_since_kiss + after_first_kiss + eps_since_kiss * after_first_kiss)
 ratings_couples |>
-  dplyr::mutate(fit = its_mod$fitted.values) |>
+  dplyr::mutate(fit = its_mod$fitted.values,
+                cf = its_mod$coefficients[1] + its_mod$coefficients[2] * eps_since_kiss) |>
   ggplot(aes( x = eps_since_kiss, y = rating, group = after_first_kiss)) +
   geom_point(aes(color = after_first_kiss), alpha = 0.5) +
-  geom_line(aes(y = fit))
+  geom_line(aes(y = fit)) +
+  geom_line(aes(y = cf), linetype = 2) ## add dashed line with counterfactual trajectory to plot
 ```
 
+**A note about interpreting the model:** 
+
+The ITS model quantifies the altered trajectories of the episode ratings after versus before the will they/won't they couple first kiss. Primary interpretations from the ITS models were two-fold: (1) did the episode ratings change immediately following the first kiss and (2) if so, did they/how quickly did they return to pre-first-kiss levels?
+
+  -   The immediate change in episode ratings after versus before the first kiss, we obtained estimates from the main effect of the post-kiss period.
+  
 ```{r}
-ratings_couples |> 
-  dplyr::mutate(fit = its_mod$fitted.values) |>
-  filter(show == "New Girl") |>
+its_mod$coefficients["after_first_kissTRUE"] 
+```
+  
+  -   The episode-on-episode change in the episode ratings after versus before the first, we obtained estimates using the interaction effect between the episode-on-episode rate of change and an indicator for the post-kiss period. 
+  
+```{r}
+its_mod$coefficients["eps_since_kiss:after_first_kissTRUE"] 
+```
+  
+Both are presented with their 95% confidence intervals (95% CI). 
+
+```{r}
+its_mod <- lm(data = ratings_couples,
+              rating ~ eps_since_kiss + after_first_kiss + eps_since_kiss * after_first_kiss, 
+              subset = show == "New Girl") ## fit model only to New Girl
+
+newgirl <- ratings_couples |> 
+    filter(show == "New Girl")
+
+newgirl |> 
+  dplyr::mutate(fit = its_mod$fitted.values,
+                cf = its_mod$coefficients[1] + its_mod$coefficients[2] * eps_since_kiss ## counterfactual, extending pre-kiss model
+                ) |>
   ggplot(aes(x = eps_since_kiss, y = rating, group = after_first_kiss)) +
+  annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha=0.2, fill = "magenta") +
   geom_point(aes(color = after_first_kiss), alpha = 0.5) +
   geom_line(aes(y = fit)) +
+  geom_line(aes(y = cf), linetype = 2) + ## add dashed line with counterfactual trajectory to plot
   theme_barbie() +
   labs(title = "I meant something like that",
        subtitle = "jess and nick <3") +
@@ -211,7 +241,6 @@ ratings_couples |>
         plot.subtitle = element_text(size = 8),
         axis.title = element_text(size = 8),
         axis.text = element_text(size = 8),
-        legend.title = element_text(size = 8)) +
-  scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkgray"))
-  
+        legend.title = element_text(size = 8)) + 
+  scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkgray"), guide = "none")
 ```
