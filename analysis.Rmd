@@ -13,6 +13,7 @@ library(tidyverse)
 library(ThemePark)
 library(scales)
 library(janitor)
+library(broom)
 
 couples <- read_sheet(ss = "https://docs.google.com/spreadsheets/d/1R8WJhW0E-5_SnKRsT66lw4UuY45dezcGFVhQgJG2LIA/edit?usp=sharing", 
                       sheet = "Unique_Couples")
@@ -21,6 +22,11 @@ couples <- couples |>
   filter(!exclude) |> 
   mutate(show = unlist(show)) |> 
   dplyr::select(-starts_with(c("make_it_official", "exclude")), -already_together, -imdb_id)
+```
+
+```{r}
+couples |> pull(show) |> unique() |> length() #108 shows
+couples |> pull(couple) |> unique() |> length() #137 couples
 ```
 
 ```{r}
@@ -46,11 +52,29 @@ couples |>
   group_by(show) |>
   summarize(year = mean(year_of_start)) |>
   ggplot(aes(x = year)) +
-  geom_bar(fill = "purple") +
-  theme_barbie() +
-  labs(title = "When are we debuting?",
+  geom_bar(fill = "#573164") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "#573164"),
+        axis.text = element_text(color = "#573164",
+                                 size = 12),
+        axis.title = element_text(color = "#573164",
+                                  size = 14,
+                                  face = "bold"),
+        plot.title = element_text(color = "#573164", 
+                                  size = 20,
+                                  face = "bold",
+                                  hjust = 0.5)) +
+  labs(title = "Distribution of Show Premieres",
        x = "Year of Start",
-       y = "Number of Shows")
+       y = "Number of Shows") 
+
+ggsave("show_premiere_year.png", 
+       path = "/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/",
+       width = 11.5,
+       height = 6,
+       units = "cm")
 ```
 
 Who are our top 3 oldies and top three new shows?
@@ -69,6 +93,7 @@ rbind(couples |>
 
 ```
 
+
 ```{r}
 couples |>
   group_by(show) |>
@@ -81,12 +106,51 @@ couples |>
     grepl("201", year) ~ "2010s",
     grepl("202", year) ~ "2020s"
   )) |>
-  ggplot(aes(x = decade)) +
-  geom_bar(fill = "purple") +
-  theme_barbie() +
-  labs(title = "What decades do we have?",
+  group_by(decade) |>
+  summarize(count = n())
+```
+
+```{r}
+couples[1:20,] |>
+  mutate(decade = case_when(
+    grepl("197", year_of_start) ~ "1970s",
+    grepl("198", year_of_start) ~ "1980s",
+    grepl("199", year_of_start) ~ "1990s",
+    grepl("200", year_of_start) ~ "2000s",
+    grepl("201", year_of_start) ~ "2010s",
+    grepl("202", year_of_start) ~ "2020s"
+  )) |> 
+  mutate(perc_seasons_to_go = (num_seasons - first_kiss_season)/num_seasons) |>
+  ggplot(aes(x = decade, y = perc_seasons_to_go)) +
+  geom_boxplot(fill = "#573164") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "#573164"),
+        axis.text = element_text(color = "#573164",
+                                 size = 12),
+        axis.title = element_text(color = "#573164",
+                                  size = 14,
+                                  face = "bold"),
+        plot.title = element_text(color = "#573164", 
+                                  size = 20,
+                                  face = "bold",
+                                  hjust = 0.5),
+        plot.subtitle = element_text(color = "#573164",
+                                     size = 16,
+                                     face = "bold",
+                                     hjust = 0.5)) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Distribution of Kiss Times",
        x = "",
-       y = "Number of Shows")
+       subtitle = "(Top 20 Couples)",
+       y = "Percentage of Show to Go") 
+
+ggsave("show_premiere_decade.png", 
+       path = "/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/",
+       width = 11.5,
+       height = 6,
+       units = "cm")
 ```
 
 ```{r}
@@ -187,16 +251,104 @@ ratings_couples <- ratings_couples |>
 ```
 
 ```{r}
+ratings_couples |> 
+  group_by(couple) |>
+  summarize(start = first(year_of_start)) |> 
+  ggplot(aes(x = start)) +
+  geom_bar(fill = "#573164") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "#573164"),
+        axis.text = element_text(color = "#573164",
+                                 size = 12),
+        axis.title = element_text(color = "#573164",
+                                  size = 14,
+                                  face = "bold"),
+        plot.title = element_text(color = "#573164", 
+                                  size = 20,
+                                  face = "bold",
+                                  hjust = 0.5),
+        plot.subtitle = element_text(color = "#573164",
+                                     size = 16,
+                                     face = "bold",
+                                     hjust = 0.5)) +
+  labs(title = "Distribution of Show Premieres",
+       subtitle = "(Top 20 Couples)",
+       x = "Year of Start",
+       y = "Number of Shows") 
+
+ggsave("show_premiere_year_subset.png", 
+       path = "/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/",
+       width = 11.5,
+       height = 6,
+       units = "cm")
+```
+
+```{r}
 #center on first kiss before fitting the model
 its_mod <- lm(data = ratings_couples,
               rating ~ eps_since_kiss + after_first_kiss + eps_since_kiss * after_first_kiss)
+
+its_mod |> tidy(conf.int = TRUE) |> 
+  dplyr::select(term, estimate, p.value, conf.low, conf.high)
+
 ratings_couples |>
   dplyr::mutate(fit = its_mod$fitted.values,
                 cf = its_mod$coefficients[1] + its_mod$coefficients[2] * eps_since_kiss) |>
   ggplot(aes( x = eps_since_kiss, y = rating, group = after_first_kiss)) +
   geom_point(aes(color = after_first_kiss), alpha = 0.5) +
-  geom_line(aes(y = fit)) +
-  geom_line(aes(y = cf), linetype = 2) ## add dashed line with counterfactual trajectory to plot
+  geom_line(aes(y = fit), color = "#573164", size = 1.2) +
+  geom_line(aes(y = cf), linetype = "dotted", 
+            color = "#573164", size = 1.2) + ## add dashed line with CF trajectory to plot 
+  theme_minimal() +
+   theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "#573164"),
+        axis.text = element_text(color = "#573164",
+                                 size = 12),
+        axis.title = element_text(color = "#573164",
+                                  size = 14,
+                                  face = "bold"),
+        plot.title = element_text(color = "#573164", 
+                                  size = 20,
+                                  face = "bold",
+                                  hjust = 0.5),
+        plot.subtitle = element_text(color = "#573164",
+                                     size = 16,
+                                     face = "bold",
+                                     hjust = 0.5),
+        legend.position = "bottom") +
+  scale_color_manual(values = c("#89c8f5", "#fa9bd1")) +
+  labs(x = "Episodes Since the Kiss",
+       y = "Rating",
+       title = "Rating Trends Before and After the Kiss",
+       color = "After The Kiss?")
+
+ggsave("model_all_shows.png", 
+       path = "/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/",
+       width = 9.5,
+       height = 6,
+       units = "cm")
+
+#delta <- 10
+#post <- 0
+#ggplot(data |> filter(time > as.Date("2014-06-02") - delta,
+                      #time < as.Date("2014-06-02") + delta + post), aes(time, value)) +
+  #geom_point(color = "cornflower blue") +
+  #geom_ribbon(aes(ymin = m_lb_1, 
+                  #ymax = m_ub_1), fill = "red", alpha = 0.25) +
+  #geom_line(aes(time, m_pred_1), color = "red", lty = 2) +
+  #geom_ribbon(aes(ymin = m_lb, 
+        #          ymax = m_ub), fill = "orange", alpha = 0.25) +
+  #geom_line(aes(time, m_pred), color = "orange", lty = 1) +
+  #geom_vline(xintercept = as.Date("2014-06-02"), lty = 2, color = "grey", lwd = 1) +
+  #annotate("label", x = as.Date("2014-06-02"), y = -10, label = "(1)") +
+#  scale_x_date(date_labels = "%b %d %Y") +
+  #scale_y_continuous(limits = c(min(data$value), max(data$value))) +
+#  theme_minimal() + 
+#  labs(x = "Date",
+ #      y = "Normalized Google Trend Value")
 ```
 
 **A note about interpreting the model:** 
@@ -218,29 +370,53 @@ its_mod$coefficients["eps_since_kiss:after_first_kissTRUE"]
 Both are presented with their 95% confidence intervals (95% CI). 
 
 ```{r}
-its_mod <- lm(data = ratings_couples,
+its_mod_ng <- lm(data = ratings_couples,
               rating ~ eps_since_kiss + after_first_kiss + eps_since_kiss * after_first_kiss, 
               subset = show == "New Girl") ## fit model only to New Girl
+
+its_mod_ng |> tidy(conf.int = TRUE) |>
+  dplyr::select(term, estimate, p.value, conf.low, conf.high)
 
 newgirl <- ratings_couples |> 
     filter(show == "New Girl")
 
 newgirl |> 
-  dplyr::mutate(fit = its_mod$fitted.values,
-                cf = its_mod$coefficients[1] + its_mod$coefficients[2] * eps_since_kiss ## counterfactual, extending pre-kiss model
+  dplyr::mutate(fit = its_mod_ng$fitted.values,
+                cf = its_mod_ng$coefficients[1] + its_mod_ng$coefficients[2] * eps_since_kiss ## counterfactual, extending pre-kiss model
                 ) |>
   ggplot(aes(x = eps_since_kiss, y = rating, group = after_first_kiss)) +
-  annotate("rect", xmin = 0, xmax = Inf, ymin = -Inf, ymax = Inf, alpha=0.2, fill = "magenta") +
   geom_point(aes(color = after_first_kiss), alpha = 0.5) +
-  geom_line(aes(y = fit)) +
-  geom_line(aes(y = cf), linetype = 2) + ## add dashed line with counterfactual trajectory to plot
-  theme_barbie() +
-  labs(title = "I meant something like that",
-       subtitle = "jess and nick <3") +
-  theme(plot.title = element_text(size = 10),
-        plot.subtitle = element_text(size = 8),
-        axis.title = element_text(size = 8),
-        axis.text = element_text(size = 8),
-        legend.title = element_text(size = 8)) + 
-  scale_color_manual(values = c("TRUE" = "blue", "FALSE" = "darkgray"), guide = "none")
+  geom_line(aes(y = fit), size = 1.2, color = "#573164") +
+  geom_line(aes(y = cf), linetype = "dotted", 
+            size = 1.2, color = "#573164") + ## add dashed line with cf trajectory to plot
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(color = "#573164"),
+        axis.text = element_text(color = "#573164",
+                                 size = 12),
+        axis.title = element_text(color = "#573164",
+                                  size = 14,
+                                  face = "bold"),
+        plot.title = element_text(color = "#573164", 
+                                  size = 20,
+                                  face = "bold",
+                                  hjust = 0.5),
+        plot.subtitle = element_text(color = "#573164",
+                                     size = 16,
+                                     face = "bold",
+                                     hjust = 0.5),
+        legend.position = "bottom") +
+  scale_color_manual(values = c("#89c8f5", "#fa9bd1")) +
+  labs(title = "New Girl Rating Trends",
+       x = "Episode Since the Kiss",
+       y = "Rating",
+       color = "After the Kiss?") 
+
+ggsave("model_newgirl.png", 
+       path = "/Users/ashleymullan/Documents/Grad School/Wake Forest/M.S. Coursework/Research/TV-Modeling/tv_analysis_its/",
+       width = 9.5,
+       height = 6,
+       units = "cm")
 ```
+
