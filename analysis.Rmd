@@ -318,7 +318,7 @@ ratings_couples |>
                                      size = 28,
                                      face = "bold",
                                      hjust = 0.5),
-        legend.position = "bottom") +
+        legend.position = "none") +
   scale_color_manual(values = c("#89c8f5", "#fa9bd1")) +
   labs(x = "Episodes Since the Kiss",
        y = "Rating",
@@ -406,7 +406,7 @@ newgirl |>
                                      size = 28,
                                      face = "bold",
                                      hjust = 0.5),
-        legend.position = "bottom") +
+        legend.position = "none") +
   scale_color_manual(values = c("#89c8f5", "#fa9bd1")) +
   labs(title = "New Girl Rating Trends",
        x = "Episode Since the Kiss",
